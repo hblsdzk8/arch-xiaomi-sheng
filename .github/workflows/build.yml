@@ -127,7 +127,7 @@ jobs:
             echo "=== pre-create chroot via pacstrap ==="
             mkdir -p /var/lib/archbuild/root
             if [ -d /var/lib/archbuild/root ] && [ -z "$(ls -A /var/lib/archbuild/root 2>/dev/null)" ]; then
-              pacstrap -c /var/lib/archbuild/root base-devel git
+              pacstrap -c /var/lib/archbuild/root base-devel git glib2-devel
               echo "=== locale ==="
               echo "en_US.UTF-8 UTF-8" >> /var/lib/archbuild/root/etc/locale.gen
               arch-chroot /var/lib/archbuild/root locale-gen || true
