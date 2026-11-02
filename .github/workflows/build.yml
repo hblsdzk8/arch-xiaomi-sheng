@@ -60,6 +60,11 @@ jobs:
           sudo mkdir -p $CH/var/cache/pacman/pkg
           sudo mkdir -p $CH/var/tmp/pacman-cache
           sudo grep -q '^CacheDir' $CH/etc/pacman.conf || sudo sed -i '/^\[options\]/a CacheDir = /var/tmp/pacman-cache' $CH/etc/pacman.conf
+          sudo sed -i 's/^DownloadUser/#DownloadUser/' $CH/etc/pacman.conf
+          sudo sed -i 's/^#DisableSandboxFilesystem/DisableSandboxFilesystem/' $CH/etc/pacman.conf
+          sudo sed -i 's/^#DisableSandboxSyscalls/DisableSandboxSyscalls/' $CH/etc/pacman.conf
+          echo '--- pacman sandbox settings ---'
+          sudo grep -E 'DownloadUser|DisableSandbox' $CH/etc/pacman.conf || true
           echo '--- nspawn test ---'
           sudo systemd-nspawn -D $CH --register=no --quiet /bin/bash -c 'echo NSPAWN_OK; pwd'
           echo '--- pacman install via nspawn ---'
