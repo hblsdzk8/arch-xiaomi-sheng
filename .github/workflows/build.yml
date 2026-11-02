@@ -200,7 +200,7 @@ jobs:
             --bind=/dev/loop-control:/dev/loop-control $BINDS \
             /bin/bash -euxc "
             cd /build
-            NO_COLOR=1 make all ROOTFS_ARGS='--desktop ${{ inputs.desktop }} --partlabel ${{ inputs.partlabel }} --size 6144 --user xiaomi --password ${{ inputs.password }} --extra \"fcitx5 fcitx5-chinese-addons\"'
+            NO_COLOR=1 make all ROOTFS_ARGS='--desktop ${{ inputs.desktop }} --partlabel ${{ inputs.partlabel }} --size 8192 --user xiaomi --password ${{ inputs.password }} --extra \"fcitx5 fcitx5-chinese-addons\"'
           "
 
       - name: Locate images
