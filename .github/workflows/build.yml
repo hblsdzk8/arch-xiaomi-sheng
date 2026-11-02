@@ -69,6 +69,29 @@ jobs:
             pacman -S --noconfirm base-devel sudo git arch-install-scripts devtools ripgrep
           '
 
+      - name: Pre-create build chroot (bypass mkarchroot)
+        run: |
+          CH=/opt/arch/root.x86_64
+          sudo systemd-nspawn -D $CH --register=no /bin/bash -euxc '
+            echo "=== arch-install-scripts version ==="
+            pacman -Q arch-install-scripts devtools
+            echo "=== mkarchroot usage ==="
+            mkarchroot 2>&1 | head -5 || true
+            echo "=== pre-create chroot via pacstrap ==="
+            mkdir -p /var/lib/archbuild
+            if [ -d /var/lib/archbuild/root ]; then
+              echo "root already exists, skip"
+            else
+              pacstrap -c /var/lib/archbuild/root base-devel
+              echo "=== locale ==="
+              echo "en_US.UTF-8 UTF-8" >> /var/lib/archbuild/root/etc/locale.gen
+              arch-chroot /var/lib/archbuild/root locale-gen || true
+            fi
+            echo "=== verify ==="
+            ls /var/lib/archbuild/root/ | head -8
+            arch-chroot /var/lib/archbuild/root pacman -Q base-devel || true
+          '
+
       - name: Build rootfs + boot
         run: |
           CH=/opt/arch/root.x86_64
