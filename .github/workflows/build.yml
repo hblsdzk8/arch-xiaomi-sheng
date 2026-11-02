@@ -59,6 +59,12 @@ jobs:
           sudo mount --bind /run $CH/run
           sudo mkdir -p $CH/build
           sudo mount --bind "$GITHUB_WORKSPACE" $CH/build
+          echo '--- host df ---'; df -h /
+          echo '--- cachedir check ---'; sudo ls -la $CH/var/cache/pacman/ || echo 'cachedir MISSING'
+          sudo mkdir -p $CH/var/cache/pacman/pkg
+          sudo mkdir -p $CH/var/tmp/pacman-cache
+          sudo grep -q '^CacheDir' $CH/etc/pacman.conf || sudo sed -i '/^\[options\]/a CacheDir = /var/tmp/pacman-cache' $CH/etc/pacman.conf
+          echo '--- pacman.conf CacheDir ---'; sudo grep CacheDir $CH/etc/pacman.conf
           sudo chroot $CH /bin/bash -euxc '
             pacman-key --init
             pacman-key --populate archlinux
