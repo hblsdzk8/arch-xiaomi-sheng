@@ -1,0 +1,90 @@
+name: Build RootFS (Arch + KDE)
+
+on:
+  workflow_dispatch:
+    inputs:
+      desktop:
+        description: '桌面环境'
+        type: choice
+        options: [kde, gnome, none]
+        default: kde
+      partlabel:
+        description: 'rootfs 分区 (单系统=userdata, 双系统=linux)'
+        type: choice
+        options: [userdata, linux]
+        default: userdata
+      password:
+        description: '登录密码 (用户 xiaomi)'
+        type: string
+        default: 'xiaomi'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Arch bootstrap
+        run: |
+          cd /tmp
+          curl -fL --retry 3 --retry-delay 5 -o archboot.tar.zstd \
+            "https://geo.mirror.pkgbuild.com/iso/latest/archlinux-bootstrap-x86_64.tar.zstd"
+          ls -la archboot.tar.zstd
+
+      - name: Extract bootstrap
+        run: |
+          sudo mkdir -p /opt/arch
+          sudo tar --zstd -xf /tmp/archboot.tar.zstd -C /opt/arch
+          test -x /opt/arch/root.x86_64/usr/bin/pacman && echo "bootstrap OK"
+
+      - name: Prepare chroot (mounts + resolv + packages)
+        run: |
+          CH=/opt/arch/root.x86_64
+          sudo cp /etc/resolv.conf $CH/etc/resolv.conf
+          sudo mount --bind /dev $CH/dev
+          sudo mount --bind /dev/pts $CH/dev/pts
+          sudo mount -t proc proc $CH/proc
+          sudo mount -t sysfs sys $CH/sys
+          sudo mount --bind /run $CH/run
+          sudo mount --bind "$GITHUB_WORKSPACE" $CH/build
+          sudo chroot $CH /bin/bash -euxc '
+            pacman-key --init
+            pacman-key --populate archlinux
+            pacman -Syu --noconfirm
+            pacman -S --noconfirm base-devel git arch-install-scripts devtools ripgrep
+          '
+
+      - name: Build rootfs + boot
+        run: |
+          CH=/opt/arch/root.x86_64
+          sudo chroot $CH /bin/bash -euxc "
+            cd /build
+            NO_COLOR=1 make all ROOTFS_ARGS='--desktop ${{ inputs.desktop }} --partlabel ${{ inputs.partlabel }} --size 8192 --user xiaomi --password ${{ inputs.password }} --extra \"fcitx5 fcitx5-chinese-addons rustdesk\"'
+          "
+
+      - name: Locate images
+        id: find
+        run: |
+          CH=/opt/arch/root.x86_64
+          ROOTFS=$(sudo find $CH/build/out -name 'rootfs.img' -size +1G | head -1)
+          BOOT=$(sudo find $CH/build/out -name 'boot.img' -size +1M | head -1)
+          echo "rootfs=$ROOTFS"
+          echo "boot=$BOOT"
+          test -n "$ROOTFS" || { echo "rootfs.img 未找到"; sudo find $CH/build/out -type f | head -50; exit 1; }
+          test -n "$BOOT" || { echo "boot.img 未找到"; exit 1; }
+          echo "ROOTFS_PATH=$ROOTFS" >> "$GITHUB_OUTPUT"
+          echo "BOOT_PATH=$BOOT" >> "$GITHUB_OUTPUT"
+          sudo chmod 644 "$ROOTFS" "$BOOT"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: arch-sheng-images
+          path: |
+            ${{ steps.find.outputs.ROOTFS_PATH }}
+            ${{ steps.find.outputs.BOOT_PATH }}
+          if-no-files-found: error
+          compression-level: 0
