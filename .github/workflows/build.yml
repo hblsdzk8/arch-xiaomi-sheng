@@ -67,6 +67,8 @@ jobs:
             pacman-key --populate archlinux
             pacman -Syu --noconfirm
             pacman -S --noconfirm base-devel sudo git arch-install-scripts devtools ripgrep
+            useradd -m build || true
+            id build
           '
 
       - name: Pre-create build chroot (bypass mkarchroot)
