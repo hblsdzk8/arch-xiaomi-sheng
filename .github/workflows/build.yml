@@ -52,6 +52,9 @@ jobs:
         run: |
           CH=/opt/arch/root.aarch64
           command -v systemd-nspawn >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq systemd-container; }
+          if [ -L "$CH/etc/machine-id" ]; then sudo rm -f "$CH/etc/machine-id"; fi
+          sudo systemd-machine-id-setup --root="$CH"
+          echo "bootstrap machine-id: $(cat "$CH/etc/machine-id" 2>/dev/null || echo MISSING)"
           if [ -f /run/systemd/resolve/resolv.conf ]; then
             RESOLV_SRC=/run/systemd/resolve/resolv.conf
           else
