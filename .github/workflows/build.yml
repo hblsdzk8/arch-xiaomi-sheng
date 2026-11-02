@@ -126,6 +126,34 @@ jobs:
             arch-chroot /var/lib/archbuild/root pacman -Q base-devel || true
           '
 
+      - name: Debug files.tar.gz checksum
+        run: |
+          CH=/opt/arch/root.aarch64
+          sudo systemd-nspawn -D $CH --register=no --resolv-conf=off /bin/bash -euxc '
+            cd /build
+            echo "=== env ==="
+            echo "SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-unset}"
+            tar --version | head -1
+            gzip --version | head -1
+            echo "=== expected (PKGBUILD) ==="
+            grep -B1 -A3 "files.tar.gz" pkgs/hexagonrpc/PKGBUILD
+            echo "=== generate default (epoch unset) ==="
+            ./scripts/package-files.sh --pkg hexagonrpc
+            sha256sum pkgs/hexagonrpc/files.tar.gz
+            echo "=== gzip header first 10 bytes ==="
+            od -An -tx1 -N10 pkgs/hexagonrpc/files.tar.gz
+            echo "=== tar listing ==="
+            tar -tvzf pkgs/hexagonrpc/files.tar.gz
+            echo "=== generate with SOURCE_DATE_EPOCH=0 ==="
+            SOURCE_DATE_EPOCH=0 ./scripts/package-files.sh --pkg hexagonrpc
+            sha256sum pkgs/hexagonrpc/files.tar.gz
+            echo "=== generate with SOURCE_DATE_EPOCH=commit time of files ==="
+            EPOCH=$(git log -1 --format=%ct -- files/install/hexagonrpc pkgs/hexagonrpc/PKGBUILD)
+            echo "EPOCH=$EPOCH"
+            SOURCE_DATE_EPOCH=$EPOCH ./scripts/package-files.sh --pkg hexagonrpc
+            sha256sum pkgs/hexagonrpc/files.tar.gz
+          '
+
       - name: Build rootfs + boot
         run: |
           CH=/opt/arch/root.aarch64
