@@ -199,8 +199,11 @@ main() {
   sudo sed -i 's/^#DisableSandboxFilesystem/DisableSandboxFilesystem/' "$MOUNT_DIR/etc/pacman.conf"
   sudo sed -i 's/^#DisableSandboxSyscalls/DisableSandboxSyscalls/' "$MOUNT_DIR/etc/pacman.conf"
 
-  # Trust ALARM package signatures inside the image (unknown trust otherwise)
+  # Trust ALARM package signatures inside the image (unknown trust otherwise).
+  # keyring files ship in archlinuxarm-keyring; install via pacstrap so the
+  # HOST keyring (already trusted) verifies the package, then populate in-image.
   sudo arch-chroot "$MOUNT_DIR" pacman-key --init
+  sudo pacstrap "$MOUNT_DIR" archlinuxarm-keyring
   sudo arch-chroot "$MOUNT_DIR" pacman-key --populate archlinuxarm
 
   msg "安装 ${#ROOTFS_PACKAGES[@]} 个 sheng 核心硬件支持包"
