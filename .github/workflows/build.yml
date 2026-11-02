@@ -128,6 +128,10 @@ jobs:
             echo "CHROOT_VERSION=$CHROOT_VER"
             echo "$CHROOT_VER" > /var/lib/archbuild/root/.arch-chroot
             cat /var/lib/archbuild/root/.arch-chroot
+            echo "=== machine-id (mkarchroot does this too) ==="
+            systemd-machine-id-setup --root=/var/lib/archbuild/root
+            cat /var/lib/archbuild/root/etc/machine-id
+            echo "LANG=C.UTF-8" > /var/lib/archbuild/root/etc/locale.conf
             echo "=== verify ==="
             ls /var/lib/archbuild/root/ | head -8
             arch-chroot /var/lib/archbuild/root pacman -Q base-devel || true
