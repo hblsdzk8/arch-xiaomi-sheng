@@ -270,7 +270,13 @@ EOF
   sudo arch-chroot "$MOUNT_DIR" pacman -Scc --noconfirm || true
 
   msg "卸载并检查文件系统"
-  sudo umount -R "$MOUNT_DIR"
+  # gpg-agent (spawned by pacman-key) keeps sockets inside the image and blocks umount
+  sudo arch-chroot "$MOUNT_DIR" gpgconf --homedir /etc/pacman.d/gnupg --kill all >/dev/null 2>&1 || true
+  if command -v fuser >/dev/null 2>&1; then
+    sudo fuser -km "$MOUNT_DIR" >/dev/null 2>&1 || true
+  fi
+  sleep 1
+  sudo umount -R "$MOUNT_DIR" || { sleep 2; sudo umount -R "$MOUNT_DIR"; }
   verify_filesystem "$rootfs_image"
 
   msg "rootfs 已生成: $rootfs_image"
