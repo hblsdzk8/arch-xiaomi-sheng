@@ -78,14 +78,14 @@ jobs:
             echo "=== mkarchroot usage ==="
             mkarchroot 2>&1 | head -5 || true
             echo "=== pre-create chroot via pacstrap ==="
-            mkdir -p /var/lib/archbuild
-            if [ -d /var/lib/archbuild/root ]; then
-              echo "root already exists, skip"
-            else
+            mkdir -p /var/lib/archbuild/root
+            if [ -d /var/lib/archbuild/root ] && [ -z "$(ls -A /var/lib/archbuild/root 2>/dev/null)" ]; then
               pacstrap -c /var/lib/archbuild/root base-devel
               echo "=== locale ==="
               echo "en_US.UTF-8 UTF-8" >> /var/lib/archbuild/root/etc/locale.gen
               arch-chroot /var/lib/archbuild/root locale-gen || true
+            else
+              echo "root exists (maybe non-empty), continuing"
             fi
             echo "=== verify ==="
             ls /var/lib/archbuild/root/ | head -8
