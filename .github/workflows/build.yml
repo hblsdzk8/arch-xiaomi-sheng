@@ -71,7 +71,7 @@ jobs:
           echo '--- host DNS ---'
           getent hosts mirror.archlinuxarm.org || echo HOST_DNS_FAIL_mirror
           getent hosts geo.mirror.pkgbuild.com || echo HOST_DNS_FAIL_pkgbuild
-          printf 'Server = http://50.116.36.110/$arch/$repo\nServer = http://mirror.archlinuxarm.org/$arch/$repo\n' | sudo tee $CH/etc/pacman.d/mirrorlist >/dev/null
+          printf 'Server = http://mirror.archlinuxarm.org/$arch/$repo\nServer = http://50.116.36.110/$arch/$repo\n' | sudo tee $CH/etc/pacman.d/mirrorlist >/dev/null
           echo '--- mirrorlist ---'
           sudo cat $CH/etc/pacman.d/mirrorlist
           sudo mkdir -p $CH/build
