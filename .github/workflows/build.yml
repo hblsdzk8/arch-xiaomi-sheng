@@ -49,12 +49,13 @@ jobs:
           sudo mount -t proc proc $CH/proc
           sudo mount -t sysfs sys $CH/sys
           sudo mount --bind /run $CH/run
+          sudo mkdir -p $CH/build
           sudo mount --bind "$GITHUB_WORKSPACE" $CH/build
           sudo chroot $CH /bin/bash -euxc '
             pacman-key --init
             pacman-key --populate archlinux
             pacman -Syu --noconfirm
-            pacman -S --noconfirm base-devel git arch-install-scripts devtools ripgrep
+            pacman -S --noconfirm base-devel sudo git arch-install-scripts devtools ripgrep
           '
 
       - name: Build rootfs + boot
