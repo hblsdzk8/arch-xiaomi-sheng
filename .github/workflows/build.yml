@@ -55,6 +55,12 @@ jobs:
           if [ -L "$CH/etc/machine-id" ]; then sudo rm -f "$CH/etc/machine-id"; fi
           sudo systemd-machine-id-setup --root="$CH"
           echo "bootstrap machine-id: $(cat "$CH/etc/machine-id" 2>/dev/null || echo MISSING)"
+          sudo modprobe loop max_loop=16 2>/dev/null || sudo modprobe loop 2>/dev/null || true
+          for i in $(seq 0 15); do
+            [ -e /dev/loop$i ] || sudo mknod -m 660 /dev/loop$i b 7 $i
+          done
+          echo '--- loop devices ---'
+          ls /dev/loop* 2>/dev/null | head -20 || echo NO_LOOP
           if [ -f /run/systemd/resolve/resolv.conf ]; then
             RESOLV_SRC=/run/systemd/resolve/resolv.conf
           else
@@ -186,7 +192,13 @@ jobs:
       - name: Build rootfs + boot
         run: |
           CH=/opt/arch/root.aarch64
-          sudo systemd-nspawn -D $CH --register=no --resolv-conf=off /bin/bash -euxc "
+          BINDS=""
+          for i in $(seq 0 15); do
+            BINDS="$BINDS --bind=/dev/loop$i:/dev/loop$i"
+          done
+          sudo systemd-nspawn -D $CH --register=no --resolv-conf=off \
+            --bind=/dev/loop-control:/dev/loop-control $BINDS \
+            /bin/bash -euxc "
             cd /build
             NO_COLOR=1 make all ROOTFS_ARGS='--desktop ${{ inputs.desktop }} --partlabel ${{ inputs.partlabel }} --size 6144 --user xiaomi --password ${{ inputs.password }} --extra \"fcitx5 fcitx5-chinese-addons\"'
           "
