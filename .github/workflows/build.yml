@@ -140,6 +140,11 @@ jobs:
             systemd-machine-id-setup --root=/var/lib/archbuild/root
             cat /var/lib/archbuild/root/etc/machine-id
             echo "LANG=C.UTF-8" > /var/lib/archbuild/root/etc/locale.conf
+            echo "=== disable pacman sandbox in clean chroot (pacstrap installs default conf) ==="
+            sed -i "s/^DownloadUser/#DownloadUser/" /var/lib/archbuild/root/etc/pacman.conf
+            sed -i "s/^#DisableSandboxFilesystem/DisableSandboxFilesystem/" /var/lib/archbuild/root/etc/pacman.conf
+            sed -i "s/^#DisableSandboxSyscalls/DisableSandboxSyscalls/" /var/lib/archbuild/root/etc/pacman.conf
+            grep -E "DownloadUser|DisableSandbox" /var/lib/archbuild/root/etc/pacman.conf || true
             echo "=== verify ==="
             ls /var/lib/archbuild/root/ | head -8
             arch-chroot /var/lib/archbuild/root pacman -Q base-devel || true
