@@ -159,7 +159,7 @@ build_package() {
   msg "构建 $package_name"
   (
     cd "$package_dir"
-    makechrootpkg -c -U build -r "$BUILD_CHROOT" \
+    makechrootpkg -c -u -U build -r "$BUILD_CHROOT" \
       "${install_args[@]}" \
       -- --syncdeps --noconfirm --cleanbuild
   )
