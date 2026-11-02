@@ -21,7 +21,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 300
     steps:
       - name: Checkout
@@ -32,26 +32,26 @@ jobs:
           sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/powershell /usr/local/share/boost /opt/az /usr/local/share/conda /opt/microsoft /opt/powershell 2>/dev/null || true
           df -h /
 
-      - name: Download Arch bootstrap
+      - name: Download Arch Linux ARM bootstrap
         run: |
           cd /tmp
-          curl -fL --retry 3 --retry-delay 5 -o archboot.tar.zstd \
-            "https://geo.mirror.pkgbuild.com/iso/latest/archlinux-bootstrap-x86_64.tar.zst"
-          ls -la archboot.tar.zstd
+          curl -fL --retry 3 --retry-delay 5 --connect-timeout 30 -o alarm.tar.gz \
+            https://archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz \
+            || curl -fL --retry 3 --retry-delay 5 --connect-timeout 30 -o alarm.tar.gz \
+            http://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz
+          ls -la alarm.tar.gz
 
       - name: Extract bootstrap
         run: |
-          sudo mkdir -p /opt/arch
-          sudo tar --zstd -xf /tmp/archboot.tar.zstd -C /opt/arch
-          test -x /opt/arch/root.x86_64/usr/bin/pacman && echo "bootstrap OK"
+          sudo mkdir -p /opt/arch/root.aarch64
+          sudo tar -xzf /tmp/alarm.tar.gz -C /opt/arch/root.aarch64
+          test -x /opt/arch/root.aarch64/usr/bin/pacman && echo "ALARM bootstrap OK"
+          rm -f /tmp/alarm.tar.gz
 
       - name: Prepare chroot (mounts + resolv + packages)
         run: |
-          CH=/opt/arch/root.x86_64
+          CH=/opt/arch/root.aarch64
           command -v systemd-nspawn >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq systemd-container; }
-          echo 'Server = https://geo.mirror.pkgbuild.com/$repo/os/$arch' > /tmp/mirrorlist
-          sudo cp /tmp/mirrorlist $CH/etc/pacman.d/mirrorlist
-          echo '--- mirrorlist ---'; sudo cat $CH/etc/pacman.d/mirrorlist
           sudo cp /etc/resolv.conf $CH/etc/resolv.conf
           sudo mkdir -p $CH/build
           sudo mount --bind "$GITHUB_WORKSPACE" $CH/build
@@ -65,7 +65,7 @@ jobs:
           echo '--- pacman install via nspawn ---'
           sudo systemd-nspawn -D $CH --register=no /bin/bash -euxc '
             pacman-key --init
-            pacman-key --populate archlinux
+            pacman-key --populate archlinuxarm
             pacman -Syu --noconfirm
             pacman -S --noconfirm base-devel sudo git arch-install-scripts devtools ripgrep
             useradd -m build || true
@@ -74,7 +74,7 @@ jobs:
 
       - name: Pre-create build chroot (bypass mkarchroot)
         run: |
-          CH=/opt/arch/root.x86_64
+          CH=/opt/arch/root.aarch64
           sudo systemd-nspawn -D $CH --register=no /bin/bash -euxc '
             echo "=== arch-install-scripts version ==="
             pacman -Q arch-install-scripts devtools
@@ -101,16 +101,16 @@ jobs:
 
       - name: Build rootfs + boot
         run: |
-          CH=/opt/arch/root.x86_64
+          CH=/opt/arch/root.aarch64
           sudo systemd-nspawn -D $CH --register=no /bin/bash -euxc "
             cd /build
-            NO_COLOR=1 make all ROOTFS_ARGS='--desktop ${{ inputs.desktop }} --partlabel ${{ inputs.partlabel }} --size 6144 --user xiaomi --password ${{ inputs.password }} --extra \"fcitx5 fcitx5-chinese-addons rustdesk\"'
+            NO_COLOR=1 make all ROOTFS_ARGS='--desktop ${{ inputs.desktop }} --partlabel ${{ inputs.partlabel }} --size 6144 --user xiaomi --password ${{ inputs.password }} --extra \"fcitx5 fcitx5-chinese-addons\"'
           "
 
       - name: Locate images
         id: find
         run: |
-          CH=/opt/arch/root.x86_64
+          CH=/opt/arch/root.aarch64
           ROOTFS=$(sudo find $CH/build/out -name 'rootfs.img' -size +1G | head -1)
           BOOT=$(sudo find $CH/build/out -name 'boot.img' -size +1M | head -1)
           echo "rootfs=$ROOTFS"
