@@ -84,6 +84,10 @@ jobs:
               echo "=== locale ==="
               echo "en_US.UTF-8 UTF-8" >> /var/lib/archbuild/root/etc/locale.gen
               arch-chroot /var/lib/archbuild/root locale-gen || true
+              echo "=== create build user (as mkarchroot would) ==="
+              arch-chroot /var/lib/archbuild/root useradd -m -G wheel build || true
+              echo 'build ALL=(ALL) NOPASSWD: ALL' >> /var/lib/archbuild/root/etc/sudoers
+              arch-chroot /var/lib/archbuild/root getent passwd build || echo "USER_MISSING"
             else
               echo "root exists (maybe non-empty), continuing"
             fi
