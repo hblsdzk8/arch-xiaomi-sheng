@@ -53,14 +53,17 @@ jobs:
           CH=/opt/arch/root.aarch64
           command -v systemd-nspawn >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq systemd-container; }
           if [ -f /run/systemd/resolve/resolv.conf ]; then
-            sudo cp -fL /run/systemd/resolve/resolv.conf $CH/etc/resolv.conf
+            RESOLV_SRC=/run/systemd/resolve/resolv.conf
           else
-            sudo cp -fL /etc/resolv.conf $CH/etc/resolv.conf
+            RESOLV_SRC=/etc/resolv.conf
           fi
+          sudo rm -f $CH/etc/resolv.conf
+          sudo cp -fL "$RESOLV_SRC" $CH/etc/resolv.conf
           for ns in 1.1.1.1 8.8.8.8; do
             grep -q "nameserver $ns" $CH/etc/resolv.conf 2>/dev/null || echo "nameserver $ns" | sudo tee -a $CH/etc/resolv.conf >/dev/null
           done
           echo '--- resolv.conf ---'
+          sudo ls -la $CH/etc/resolv.conf
           sudo cat $CH/etc/resolv.conf
           echo '--- host DNS ---'
           getent hosts mirror.archlinuxarm.org || echo HOST_DNS_FAIL_mirror
