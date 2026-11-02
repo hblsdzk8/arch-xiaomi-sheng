@@ -27,6 +27,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/powershell /usr/local/share/boost /opt/az /usr/local/share/conda /opt/microsoft /opt/powershell 2>/dev/null || true
+          df -h /
+
       - name: Download Arch bootstrap
         run: |
           cd /tmp
@@ -66,7 +71,7 @@ jobs:
           CH=/opt/arch/root.x86_64
           sudo chroot $CH /bin/bash -euxc "
             cd /build
-            NO_COLOR=1 make all ROOTFS_ARGS='--desktop ${{ inputs.desktop }} --partlabel ${{ inputs.partlabel }} --size 8192 --user xiaomi --password ${{ inputs.password }} --extra \"fcitx5 fcitx5-chinese-addons rustdesk\"'
+            NO_COLOR=1 make all ROOTFS_ARGS='--desktop ${{ inputs.desktop }} --partlabel ${{ inputs.partlabel }} --size 6144 --user xiaomi --password ${{ inputs.password }} --extra \"fcitx5 fcitx5-chinese-addons rustdesk\"'
           "
 
       - name: Locate images
