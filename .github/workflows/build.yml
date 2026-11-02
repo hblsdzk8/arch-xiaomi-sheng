@@ -55,6 +55,11 @@ jobs:
           if [ -L "$CH/etc/machine-id" ]; then sudo rm -f "$CH/etc/machine-id"; fi
           sudo systemd-machine-id-setup --root="$CH"
           echo "bootstrap machine-id: $(cat "$CH/etc/machine-id" 2>/dev/null || echo MISSING)"
+          if ! grep -q -- '--keep-unit' $CH/usr/bin/arch-nspawn; then
+            sudo sed -i 's/--register=no/&\n\t--keep-unit/' $CH/usr/bin/arch-nspawn
+          fi
+          echo '--- arch-nspawn args ---'
+          grep -n 'register=no\|keep-unit' $CH/usr/bin/arch-nspawn
           if [ -f /run/systemd/resolve/resolv.conf ]; then
             RESOLV_SRC=/run/systemd/resolve/resolv.conf
           else
