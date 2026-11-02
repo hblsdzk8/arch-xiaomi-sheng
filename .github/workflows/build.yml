@@ -53,11 +53,6 @@ jobs:
           sudo cp /tmp/mirrorlist $CH/etc/pacman.d/mirrorlist
           echo '--- mirrorlist ---'; sudo cat $CH/etc/pacman.d/mirrorlist
           sudo cp /etc/resolv.conf $CH/etc/resolv.conf
-          sudo mount --bind /dev $CH/dev
-          sudo mount --bind /dev/pts $CH/dev/pts
-          sudo mount -t proc proc $CH/proc
-          sudo mount -t sysfs sys $CH/sys
-          sudo mount --bind /run $CH/run
           sudo mkdir -p $CH/build
           sudo mount --bind "$GITHUB_WORKSPACE" $CH/build
           echo '--- host df ---'; df -h /
