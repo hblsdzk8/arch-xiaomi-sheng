@@ -194,6 +194,11 @@ main() {
     sudo tee "$MOUNT_DIR/etc/pacman.conf.new" >/dev/null
   sudo mv "$MOUNT_DIR/etc/pacman.conf.new" "$MOUNT_DIR/etc/pacman.conf"
 
+  # ARM runner kernel lacks Landlock: disable pacman download sandbox in the image
+  sudo sed -i 's/^DownloadUser/#DownloadUser/' "$MOUNT_DIR/etc/pacman.conf"
+  sudo sed -i 's/^#DisableSandboxFilesystem/DisableSandboxFilesystem/' "$MOUNT_DIR/etc/pacman.conf"
+  sudo sed -i 's/^#DisableSandboxSyscalls/DisableSandboxSyscalls/' "$MOUNT_DIR/etc/pacman.conf"
+
   msg "安装 ${#ROOTFS_PACKAGES[@]} 个 sheng 核心硬件支持包"
   # Suppress post hooks during the package transaction. The boot entry does
   # not exist yet, and running a flashing hook from a mounted build image is
