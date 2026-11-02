@@ -199,6 +199,10 @@ main() {
   sudo sed -i 's/^#DisableSandboxFilesystem/DisableSandboxFilesystem/' "$MOUNT_DIR/etc/pacman.conf"
   sudo sed -i 's/^#DisableSandboxSyscalls/DisableSandboxSyscalls/' "$MOUNT_DIR/etc/pacman.conf"
 
+  # Trust ALARM package signatures inside the image (unknown trust otherwise)
+  sudo arch-chroot "$MOUNT_DIR" pacman-key --init
+  sudo arch-chroot "$MOUNT_DIR" pacman-key --populate archlinuxarm
+
   msg "安装 ${#ROOTFS_PACKAGES[@]} 个 sheng 核心硬件支持包"
   # Suppress post hooks during the package transaction. The boot entry does
   # not exist yet, and running a flashing hook from a mounted build image is
