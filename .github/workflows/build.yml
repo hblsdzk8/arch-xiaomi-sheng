@@ -124,7 +124,7 @@ jobs:
               echo "root exists (maybe non-empty), continuing"
             fi
             echo "=== write .arch-chroot marker (arch-nspawn requires it) ==="
-            CHROOT_VER=$(sed -n "s/^CHROOT_VERSION='\(.*\)'.*/\1/p" /usr/share/devtools/lib/archroot.sh)
+            CHROOT_VER=$(grep CHROOT_VERSION= /usr/share/devtools/lib/archroot.sh | head -1 | cut -d= -f2- | tr -dc "a-zA-Z0-9")
             echo "CHROOT_VERSION=$CHROOT_VER"
             echo "$CHROOT_VER" > /var/lib/archbuild/root/.arch-chroot
             cat /var/lib/archbuild/root/.arch-chroot
