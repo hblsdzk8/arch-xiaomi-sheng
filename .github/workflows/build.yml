@@ -52,7 +52,22 @@ jobs:
         run: |
           CH=/opt/arch/root.aarch64
           command -v systemd-nspawn >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq systemd-container; }
-          sudo cp /etc/resolv.conf $CH/etc/resolv.conf
+          if [ -f /run/systemd/resolve/resolv.conf ]; then
+            sudo cp -fL /run/systemd/resolve/resolv.conf $CH/etc/resolv.conf
+          else
+            sudo cp -fL /etc/resolv.conf $CH/etc/resolv.conf
+          fi
+          for ns in 1.1.1.1 8.8.8.8; do
+            grep -q "nameserver $ns" $CH/etc/resolv.conf 2>/dev/null || echo "nameserver $ns" | sudo tee -a $CH/etc/resolv.conf >/dev/null
+          done
+          echo '--- resolv.conf ---'
+          sudo cat $CH/etc/resolv.conf
+          echo '--- host DNS ---'
+          getent hosts mirror.archlinuxarm.org || echo HOST_DNS_FAIL_mirror
+          getent hosts geo.mirror.pkgbuild.com || echo HOST_DNS_FAIL_pkgbuild
+          printf 'Server = http://50.116.36.110/$arch/$repo\nServer = http://mirror.archlinuxarm.org/$arch/$repo\n' | sudo tee $CH/etc/pacman.d/mirrorlist >/dev/null
+          echo '--- mirrorlist ---'
+          sudo cat $CH/etc/pacman.d/mirrorlist
           sudo mkdir -p $CH/build
           sudo mount --bind "$GITHUB_WORKSPACE" $CH/build
           sudo chmod -R a+rwX $CH/build
@@ -66,9 +81,13 @@ jobs:
           echo '--- pacman sandbox settings ---'
           sudo grep -E 'DownloadUser|DisableSandbox' $CH/etc/pacman.conf || true
           echo '--- nspawn test ---'
-          sudo systemd-nspawn -D $CH --register=no --quiet /bin/bash -c 'echo NSPAWN_OK; pwd'
+          sudo systemd-nspawn -D $CH --register=no --resolv-conf=off --quiet /bin/bash -c 'echo NSPAWN_OK; cat /etc/resolv.conf'
           echo '--- pacman install via nspawn ---'
-          sudo systemd-nspawn -D $CH --register=no /bin/bash -euxc '
+          sudo systemd-nspawn -D $CH --register=no --resolv-conf=off /bin/bash -euxc '
+            echo "--- container DNS diag ---"
+            cat /etc/resolv.conf
+            getent hosts mirror.archlinuxarm.org || echo CONTAINER_DNS_FAIL_mirror
+            (exec 3<>/dev/tcp/50.116.36.110/80 && echo TCP_IP_OK && exec 3>&-) || echo TCP_IP_FAIL
             pacman-key --init
             pacman-key --populate archlinuxarm
             pacman -Syu --noconfirm
@@ -80,7 +99,7 @@ jobs:
       - name: Pre-create build chroot (bypass mkarchroot)
         run: |
           CH=/opt/arch/root.aarch64
-          sudo systemd-nspawn -D $CH --register=no /bin/bash -euxc '
+          sudo systemd-nspawn -D $CH --register=no --resolv-conf=off /bin/bash -euxc '
             echo "=== arch-install-scripts version ==="
             pacman -Q arch-install-scripts devtools
             echo "=== mkarchroot usage ==="
@@ -107,7 +126,7 @@ jobs:
       - name: Build rootfs + boot
         run: |
           CH=/opt/arch/root.aarch64
-          sudo systemd-nspawn -D $CH --register=no /bin/bash -euxc "
+          sudo systemd-nspawn -D $CH --register=no --resolv-conf=off /bin/bash -euxc "
             cd /build
             NO_COLOR=1 make all ROOTFS_ARGS='--desktop ${{ inputs.desktop }} --partlabel ${{ inputs.partlabel }} --size 6144 --user xiaomi --password ${{ inputs.password }} --extra \"fcitx5 fcitx5-chinese-addons\"'
           "
