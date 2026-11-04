@@ -1,0 +1,28 @@
+name: Build qbootctl
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - name: Install deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq meson cmake zlib1g-dev build-essential git
+      - name: Build
+        run: |
+          git clone --depth 1 https://github.com/linux-msm/qbootctl.git
+          cd qbootctl
+          meson setup build
+          meson compile -C build
+          ls -la build/qbootctl
+          ./build/qbootctl -h | head -5
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: qbootctl
+          path: qbootctl/build/qbootctl
+          if-no-files-found: error
