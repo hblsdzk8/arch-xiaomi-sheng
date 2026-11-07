@@ -1,0 +1,100 @@
+name: Build sheng kernel 7.3.0 (BT test)
+
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  kernel:
+    name: Build kernel 7.3.0-sm8550 + modules
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 300
+    steps:
+      - name: Install build deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential flex bison bc \
+            libssl-dev libelf-dev python3 rsync zstd kmod
+
+      - name: Fetch kernel source (tarball, no .git so LOCALVERSION_AUTO is a no-op)
+        run: |
+          set -euo pipefail
+          curl -L --retry 3 -o src.tar.gz \
+            https://github.com/ianchb/sm8550-mainline/archive/1fb56e66091e71160d7c7f8e13b065d5b6ab8b8c.tar.gz
+          mkdir -p ksrc
+          tar xzf src.tar.gz -C ksrc --strip-components=1
+          ls ksrc | head -20
+          test -f ksrc/Makefile
+          head -5 ksrc/Makefile
+
+      - name: Assemble config (debian-sheng sm8550.config + sheng fragment)
+        run: |
+          set -euo pipefail
+          cd ksrc
+          curl -L --retry 3 -o base.config \
+            https://raw.githubusercontent.com/ianchb/debian-sheng/da1d2761dbc1ccaea0122f8b0c2dce2d52edaeb2/sm8550.config
+          wc -l base.config
+          # 本项目片段：USB 串口调试 + ps5169 retimer + 关 STRICT_DEVMEM
+          cat > frag.config <<'EOF'
+          CONFIG_USB_CONFIGFS_ACM=y
+          CONFIG_USB_CONFIGFS_SERIAL=y
+          CONFIG_USB_G_SERIAL=y
+          CONFIG_U_SERIAL_CONSOLE=y
+          CONFIG_GPIO_SHARED_PROXY=y
+          CONFIG_TYPEC_MUX_PS5169=y
+          # CONFIG_STRICT_DEVMEM is not set
+          # CONFIG_IO_STRICT_DEVMEM is not set
+          EOF
+          cp base.config .config
+          export ARCH=arm64
+          export KCONFIG_NOTIMESTAMP=1
+          make olddefconfig
+          ./scripts/kconfig/merge_config.sh -O . -m .config frag.config
+          make olddefconfig
+          grep -E 'CONFIG_BT_HCIUART|CONFIG_BT_QCA|CONFIG_TYPEC_MUX_PS5169|CONFIG_LOCALVERSION' .config
+
+      - name: Build Image + modules + dtbs
+        run: |
+          set -euo pipefail
+          cd ksrc
+          export ARCH=arm64
+          nproc
+          make -j"$(nproc)" Image modules dtbs 2>&1 | tail -25
+          ls -lh arch/arm64/boot/Image
+          ls arch/arm64/boot/dts/qcom/ | grep -i sheng | head
+
+      - name: Package modules
+        run: |
+          set -euo pipefail
+          cd ksrc
+          export ARCH=arm64
+          DEST="$PWD/../modroot"
+          make modules_install INSTALL_MOD_PATH="$DEST" 2>&1 | tail -10
+          REL=$(cat include/config/kernel.release)
+          echo "kernel.release=$REL"
+          echo "$REL" > ../kernel-release.txt
+          ls "$DEST/lib/modules/"
+          du -sh "$DEST/lib/modules/$REL"
+          cd ..
+          tar --zstd -cf modules.tar.zst -C modroot lib/modules
+          ls -lh modules.tar.zst
+          cp ksrc/arch/arm64/boot/Image Image
+          cp ksrc/arch/arm64/boot/dts/qcom/sm8550-xiaomi-sheng.dtb sheng.dtb 2>/dev/null || \
+            find ksrc/arch/arm64/boot/dts -name '*sheng*.dtb' -exec cp {} sheng.dtb \;
+          ls -lh Image sheng.dtb
+          sha256sum Image sheng.dtb modules.tar.zst > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: sheng-kernel-730
+          path: |
+            Image
+            sheng.dtb
+            modules.tar.zst
+            kernel-release.txt
+            SHA256SUMS
+          retention-days: 14
